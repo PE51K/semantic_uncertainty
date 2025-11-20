@@ -21,8 +21,17 @@ For smaller models (7B parameters), desktop GPUs such as the Nvidia TitanRTX (24
 For larger models (13B), GPUs with more memory, such as the Nvidia A100 server GPU, are required.
 Our largest models with 70B parameters require the use of two Nvidia A100 GPUs (2x80GB) simultaneously.
 
-One can reduce the precision to float16 or int8 to reduce memory requirements without significantly affecting model predictions and their accuracy.
-We use float16 for 70B models by default, and int8 mode can be enabled for any model by suffixing the model name with `-int8`.
+**GPU Memory Management:** The codebase automatically detects available GPU memory and allocates up to 90% of it for model loading, leaving a buffer for PyTorch overhead. This makes the code robust across different hardware configurations.
+
+**Quantization for Memory-Constrained GPUs:** You can reduce the precision to float16, int8, or int4 to reduce memory requirements without significantly affecting model predictions and their accuracy.
+We use float16 for 70B models by default. For memory-constrained GPUs (e.g., 24GB), you can enable quantization by suffixing the model name:
+- `-8bit` for 8-bit quantization (reduces memory by ~50%, e.g., `Mistral-7B-Instruct-v0.1-8bit`)
+- `-4bit` for 4-bit quantization (reduces memory by ~75%, e.g., `Mistral-7B-Instruct-v0.1-4bit`)
+
+Example for 24GB GPU:
+```bash
+python semantic_uncertainty/generate_answers.py --model_name=Mistral-7B-Instruct-v0.1-8bit --dataset=trivia_qa
+```
 
 
 ### Software Dependencies
@@ -114,7 +123,7 @@ It is possible to run these scripts individually, e.g. when recomputing results,
 To reproduce the experiments of the paper, one needs to execute
 
 ```
-python generate_answers.py --model_name=$MODEL --dataset=$DATASET $EXTRA_CFG
+python semantic_uncertainty/generate_answers.py --model_name=$MODEL --dataset=$DATASET $EXTRA_CFG
 ```
 
 for all combinations of models and datasets, and where `$EXTRA_CFG` is defined to either activate short-phrase or sentence-length generations and their associated hyperparameters.
@@ -125,5 +134,6 @@ Concretely,
 * `$DATASET` is one of `[trivia_qa, squad, bioasq, nq, svamp]`,
 * and `$EXTRA_CFG=''` is empty for short-phrase generations and `EXTRA_CFG=--num_few_shot=0 --model_max_new_tokens=100 --brief_prompt=chat --metric=llm_gpt-4 --entailment_model=gpt-3.5 --no-compute_accuracy_at_all_temps` for sentence-length generations.
 
+**Batch Execution:** For running experiments across multiple models and datasets automatically, see the [Docker README](README.Docker.md#batch-experiments-for-all-models-and-datasets) for instructions on using the `run_experiments.sh` script. This script automatically generates unique experiment names and iterates through all model-dataset combinations.
 
 The results for any run can be obtained by passing the associated `wandb_id` to an evaluation notebook identical to the demo in [notebooks/example_evaluation.ipynb](notebooks/example_evaluation.ipynb).

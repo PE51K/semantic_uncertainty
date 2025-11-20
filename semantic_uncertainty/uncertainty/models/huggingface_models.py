@@ -19,6 +19,28 @@ from uncertainty.models.base_model import BaseModel
 from uncertainty.models.base_model import STOP_SEQUENCES
 
 
+def get_max_memory():
+    """Automatically detect available GPU memory and return max_memory dict.
+    
+    Returns a dictionary with GPU memory allocation, leaving a buffer for PyTorch overhead.
+    """
+    max_memory = {}
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            # Get total memory in bytes
+            total_memory = torch.cuda.get_device_properties(i).total_memory
+            # Use 90% of available memory to leave buffer for PyTorch overhead
+            usable_memory = int(total_memory * 0.9)
+            # Convert to GiB string format
+            memory_gib = f"{usable_memory / (1024**3):.0f}GiB"
+            max_memory[i] = memory_gib
+            logging.info(f"GPU {i}: Detected {total_memory / (1024**3):.2f}GiB total, setting max_memory to {memory_gib}")
+    else:
+        logging.warning("No CUDA devices detected, max_memory will be empty")
+    
+    return max_memory
+
+
 class StoppingCriteriaSub(StoppingCriteria):
     """Stop generations when they match a particular text or token."""
     def __init__(self, stops, tokenizer, match_on='text', initial_length=None):
@@ -120,7 +142,7 @@ class HuggingfaceModel(BaseModel):
             if ('7b' in model_name or '13b' in model_name) or eightbit:
                 self.model = AutoModelForCausalLM.from_pretrained(
                     f"{base}/{model_name}", device_map="auto",
-                    max_memory={0: '80GIB'}, **kwargs,)
+                    max_memory=get_max_memory(), **kwargs,)
 
             elif llama2_70b or llama65b:
                 path = snapshot_download(
@@ -170,7 +192,7 @@ class HuggingfaceModel(BaseModel):
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_id,
                 device_map='auto',
-                max_memory={0: '80GIB'},
+                max_memory=get_max_memory(),
                 **kwargs,
             )
 

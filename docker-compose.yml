@@ -1,0 +1,24 @@
+services:
+  semantic-uncertainty:
+    build: .
+    image: semantic-uncertainty:latest
+    container_name: semantic-uncertainty-dev
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+    volumes:
+      - .:/workspace
+      - ${XDG_CACHE_HOME:-./cache}:/workspace/cache
+      - ${SCRATCH_DIR:-./scratch}:/workspace/scratch
+      - ${LOGS_DIR:-./logs}:/workspace/logs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    shm_size: '16gb'
+    working_dir: /workspace
+
